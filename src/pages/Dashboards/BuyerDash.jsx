@@ -12,7 +12,14 @@ const BuyerDash = () => {
         <h1 className="text-2xl font-bold">My Wishlist</h1>
         <span className="text-zinc-500">{wishlist.length} items</span>
       </div>
-      {/* Content placeholder */}
+      {/* Replace placeholder with this */}
+      {loading ? (
+        <p className="text-center text-zinc-500 py-20">Loading...</p>
+      ) : (
+        <div className="text-zinc-500 text-center">
+          No items found in wishlist.
+        </div>
+      )}
     </div>
   );
 };
