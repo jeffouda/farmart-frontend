@@ -28,6 +28,17 @@ const BuyerDash = () => {
       <p className="text-zinc-400 text-sm mb-4">{item.location}</p>
       {/* Price and Buttons will go here */}
     </div>
+    <div className="flex justify-between items-center">
+  <p className="text-green-500 font-bold">KES {item.price.toLocaleString()}</p>
+  <div className="flex gap-2">
+    <button onClick={() => handleAddToCart(item.id)} className="bg-green-600 p-2 rounded-lg hover:bg-green-500 transition">
+      <ShoppingCart size={18} />
+    </button>
+    <button onClick={() => handleRemove(item.id)} className="bg-zinc-800 p-2 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition">
+      <Trash2 size={18} />
+    </button>
+  
+</div>
   
       
   );
