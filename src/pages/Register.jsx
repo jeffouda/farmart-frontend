@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAppDispatch } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { register } from '../features/auth/authSlice';
 
 // Password validation utility (matches backend requirements)
@@ -36,30 +36,32 @@ const Register = () => {
     confirmPassword: '',
     role: 'buyer'
   });
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { error: reduxError } = useAppSelector((state) => state.auth);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear password error when user starts typing
+    // Clear errors when user starts typing
     if (e.target.name === 'password') {
       setPasswordError('');
     }
+    setLocalError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setLocalError('');
     setPasswordError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setLocalError('Passwords do not match');
       return;
     }
 
-    // Client-side password validation
+    // Client-side password validation - show specific error before API call
     const pwdError = validatePassword(formData.password);
     if (pwdError) {
       setPasswordError(pwdError);
@@ -77,18 +79,28 @@ const Register = () => {
       })).unwrap();
       navigate('/login');
     } catch (err) {
-      setError(err.message || err || 'Registration failed');
+      // Handle both string errors (from rejectWithValue) and Error objects
+      const errorMessage = typeof err === 'string' ? err : (err.message || err || 'Registration failed');
+      setLocalError(errorMessage);
     }
   };
+
+  // Use local error or Redux error
+  const displayError = localError || reduxError;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 py-12">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-lg">
         <h2 className="text-2xl font-bold text-center mb-6">Create FarmAT Account</h2>
         
-        {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-            {error}
+        {displayError && typeof displayError === 'string' && (
+          <div className="bg-red-100 border border-red-400 text-red-700 p-4 rounded mb-4">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span>{displayError}</span>
+            </div>
           </div>
         )}
 
@@ -163,7 +175,7 @@ const Register = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border rounded-lg"
+              className={`mt-1 w-full px-4 py-2 border rounded-lg ${passwordError ? 'border-red-500' : ''}`}
               required
             />
             {passwordError && (
