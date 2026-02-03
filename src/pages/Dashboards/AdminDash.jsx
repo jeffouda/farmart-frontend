@@ -1,8 +1,17 @@
 import { useState } from 'react';
-import { useAppSelector } from '../../store/hooks';
+import { useNavigate } from 'react-router-dom';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { logout } from '../../features/auth/authSlice';
 
 const AdminDash = () => {
   const { user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
   
   // Mock admin data
   const [stats] = useState({
@@ -25,8 +34,18 @@ const AdminDash = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">Admin Dashboard</h1>
-      <p className="text-gray-600 mb-8">Welcome back, {user?.first_name}</p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {user?.first_name}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+        >
+          Logout
+        </button>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
