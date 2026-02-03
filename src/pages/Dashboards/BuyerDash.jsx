@@ -1,29 +1,15 @@
-import { useState } from 'react';
-import Navbar from '../../components/layout/Navbar';
+import React, { useState, useEffect } from "react";
+import { ShoppingCart, Trash2 } from "lucide-react";
+import api from "../../services/api";
 
 const BuyerDash = () => {
-  const [activeTab, setActiveTab] = useState('orders');
+  const [wishlist, setWishlist] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Buyer Dashboard</h1>
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="border-b px-6 py-4">
-            <nav className="flex gap-6">
-              {['orders', 'wishlist', 'settings'].map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)} className={`capitalize ${activeTab === tab ? 'text-primary-600 font-semibold' : 'text-gray-500'}`}>
-                  {tab}
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div className="p-6">
-            <p className="text-gray-500">Your {activeTab} will appear here.</p>
-          </div>
-        </div>
-      </div>
+    <div className="bg-zinc-950 text-white min-h-screen p-8">
+      <h1 className="text-2xl font-bold mb-8">My Wishlist</h1>
+      {/* Content will go here */}
     </div>
   );
 };
