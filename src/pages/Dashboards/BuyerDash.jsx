@@ -21,6 +21,22 @@ const BuyerDash = () => {
     loadWishlist();
   }, []);
 
+  const handleAddToCart = async (id) => {
+    try {
+      await api.post("/cart", { itemId: id });
+      alert("Added to cart!");
+    } catch (err) { console.log(err); }
+  };
+
+  const handleRemove = async (id) => {
+    try {
+      await api.delete(`/wishlist/${id}`);
+      setWishlist(wishlist.filter(item => item.id !== id));
+    } catch (err) { console.log(err); }
+  };
+
+  
+
   return (
     <div className="bg-zinc-950 text-white min-h-screen p-8">
       <div className="flex justify-between items-center mb-8">
