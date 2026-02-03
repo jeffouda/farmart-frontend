@@ -3,6 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { register } from '../features/auth/authSlice';
 
+// Phone number validation regex for Kenyan format
+const KENYAN_PHONE_REGEX = /^(?:254|\+254|0)?(7(?:(?:[129][0-9])|(?:0[0-8])|(?:4[0-1]))[0-9]{6})$/;
+
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Username validation - alphanumeric only (no special symbols)
+const USERNAME_REGEX = /^[a-zA-Z0-9]+$/;
+
 // Password validation utility (matches backend requirements)
 const validatePassword = (password) => {
   const minLength = 8;
@@ -26,6 +35,33 @@ const validatePassword = (password) => {
   return null;
 };
 
+// Phone validation utility
+const validatePhone = (phone) => {
+  if (!phone) return 'Phone number is required';
+  if (!KENYAN_PHONE_REGEX.test(phone)) {
+    return 'Please enter a valid Kenyan phone number (e.g., 07XXXXXXXX)';
+  }
+  return null;
+};
+
+// Username validation utility
+const validateUsername = (value, fieldName) => {
+  if (!value) return `${fieldName} is required`;
+  if (!USERNAME_REGEX.test(value)) {
+    return `${fieldName} must be alphanumeric (letters and numbers only)`;
+  }
+  return null;
+};
+
+// Email validation utility
+const validateEmail = (email) => {
+  if (!email) return 'Email is required';
+  if (!EMAIL_REGEX.test(email)) {
+    return 'Please enter a valid email address';
+  }
+  return null;
+};
+
 const Register = () => {
   const [formData, setFormData] = useState({
     firstName: '',
@@ -38,33 +74,101 @@ const Register = () => {
   });
   const [localError, setLocalError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { error: reduxError } = useAppSelector((state) => state.auth);
 
+  // Phone number masking - only allow digits 0-9 and +
+  const handlePhoneChange = (e) => {
+    const newValue = e.target.value;
+    // Filter: only allow digits 0-9 and + symbol
+    if (!/^[0-9+]*$/.test(newValue)) return;
+    setFormData({ ...formData, phone: newValue });
+    setPhoneError('');
+    setLocalError('');
+  };
+
+  // Username field masking - only allow alphanumeric characters
+  const handleUsernameChange = (e) => {
+    const newValue = e.target.value;
+    // Filter: only allow alphanumeric characters (no special symbols)
+    if (!/^[a-zA-Z0-9]*$/.test(newValue)) return;
+    setFormData({ ...formData, [e.target.name]: newValue });
+    setLocalError('');
+  };
+
+  // Generic change handler for other fields
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear errors when user starts typing
+    setLocalError('');
     if (e.target.name === 'password') {
       setPasswordError('');
     }
-    setLocalError('');
+  };
+
+  // Validate all form fields
+  const validateForm = () => {
+    const errors = {};
+
+    // Validate firstName (alphanumeric only)
+    const firstNameError = validateUsername(formData.firstName, 'First name');
+    if (firstNameError) errors.firstName = firstNameError;
+
+    // Validate lastName (alphanumeric only)
+    const lastNameError = validateUsername(formData.lastName, 'Last name');
+    if (lastNameError) errors.lastName = lastNameError;
+
+    // Validate email
+    const emailError = validateEmail(formData.email);
+    if (emailError) errors.email = emailError;
+
+    // Validate phone
+    const phoneErrorMsg = validatePhone(formData.phone);
+    if (phoneErrorMsg) {
+      errors.phone = phoneErrorMsg;
+      setPhoneError(phoneErrorMsg);
+    }
+
+    // Validate password
+    const passwordErrorMsg = validatePassword(formData.password);
+    if (passwordErrorMsg) {
+      errors.password = passwordErrorMsg;
+      setPasswordError(passwordErrorMsg);
+    }
+
+    // Validate confirm password
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Check if form is valid for button disable state
+  const isFormValid = () => {
+    return (
+      USERNAME_REGEX.test(formData.firstName) &&
+      USERNAME_REGEX.test(formData.lastName) &&
+      EMAIL_REGEX.test(formData.email) &&
+      KENYAN_PHONE_REGEX.test(formData.phone) &&
+      formData.password.length >= 8 &&
+      formData.password === formData.confirmPassword &&
+      formData.role
+    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError('');
     setPasswordError('');
+    setPhoneError('');
+    setFieldErrors({});
 
-    if (formData.password !== formData.confirmPassword) {
-      setLocalError('Passwords do not match');
-      return;
-    }
-
-    // Client-side password validation - show specific error before API call
-    const pwdError = validatePassword(formData.password);
-    if (pwdError) {
-      setPasswordError(pwdError);
+    // Run full validation before submission
+    if (!validateForm()) {
       return;
     }
 
@@ -112,10 +216,14 @@ const Register = () => {
                 type="text"
                 name="firstName"
                 value={formData.firstName}
-                onChange={handleChange}
-                className="mt-1 w-full px-4 py-2 border rounded-lg"
+                onChange={handleUsernameChange}
+                placeholder=" alphanumeric only"
+                className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.firstName ? 'border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.firstName && (
+                <p className="text-red-500 text-sm mt-1">{fieldErrors.firstName}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Last Name</label>
@@ -123,10 +231,14 @@ const Register = () => {
                 type="text"
                 name="lastName"
                 value={formData.lastName}
-                onChange={handleChange}
-                className="mt-1 w-full px-4 py-2 border rounded-lg"
+                onChange={handleUsernameChange}
+                placeholder=" alphanumeric only"
+                className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.lastName ? 'border-red-500' : ''}`}
                 required
               />
+              {fieldErrors.lastName && (
+                <p className="text-red-500 text-sm mt-1">{fieldErrors.lastName}</p>
+              )}
             </div>
           </div>
 
@@ -137,9 +249,13 @@ const Register = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border rounded-lg"
+              placeholder="you@example.com"
+              className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.email ? 'border-red-500' : ''}`}
               required
             />
+            {fieldErrors.email && (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
+            )}
           </div>
 
           <div>
@@ -148,11 +264,16 @@ const Register = () => {
               type="tel"
               name="phone"
               value={formData.phone}
-              onChange={handleChange}
-              placeholder="254700000000"
-              className="mt-1 w-full px-4 py-2 border rounded-lg"
+              onChange={handlePhoneChange}
+              placeholder="07XXXXXXXX or 254XXXXXXXXX"
+              className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.phone ? 'border-red-500' : ''}`}
               required
             />
+            {fieldErrors.phone || phoneError ? (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.phone || phoneError}</p>
+            ) : (
+              <p className="text-gray-500 text-xs mt-1">Enter a valid Kenyan mobile number (07X XXX XXXX)</p>
+            )}
           </div>
 
           <div>
@@ -175,15 +296,16 @@ const Register = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className={`mt-1 w-full px-4 py-2 border rounded-lg ${passwordError ? 'border-red-500' : ''}`}
+              className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.password || passwordError ? 'border-red-500' : ''}`}
               required
             />
-            {passwordError && (
-              <p className="text-red-500 text-sm mt-1">{passwordError}</p>
+            {fieldErrors.password || passwordError ? (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.password || passwordError}</p>
+            ) : (
+              <p className="text-gray-500 text-xs mt-1">
+                Must contain: 8+ chars, uppercase, lowercase, number, special char (@$!%*?&)
+              </p>
             )}
-            <p className="text-gray-500 text-xs mt-1">
-              Must contain: 8+ chars, uppercase, lowercase, number, special char (@$!%*?&)
-            </p>
           </div>
 
           <div>
@@ -193,14 +315,22 @@ const Register = () => {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border rounded-lg"
+              className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.confirmPassword ? 'border-red-500' : ''}`}
               required
             />
+            {fieldErrors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">{fieldErrors.confirmPassword}</p>
+            )}
           </div>
 
           <button
             type="submit"
-            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition"
+            disabled={!isFormValid()}
+            className={`w-full py-2 px-4 rounded-lg font-semibold transition ${
+              isFormValid()
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             Create Account
           </button>
