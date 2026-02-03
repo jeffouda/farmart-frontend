@@ -6,6 +6,21 @@ const BuyerDash = () => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const loadWishlist = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get("/wishlist");
+        setWishlist(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadWishlist();
+  }, []);
+
   return (
     <div className="bg-zinc-950 text-white min-h-screen p-8">
       <div className="flex justify-between items-center mb-8">
