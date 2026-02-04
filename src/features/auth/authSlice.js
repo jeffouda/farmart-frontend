@@ -162,9 +162,7 @@ export const updateProfile = createAsyncThunk('auth/updateProfile', async (profi
         }
       });
       
-      const response = await api.patch('/auth/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.formPatch('/auth/profile', formData);
       
       // Store updated user in localStorage
       localStorage.setItem('user', JSON.stringify({
@@ -282,6 +280,12 @@ const authSlice = createSlice({
             };
           }
         }
+        // THE TOAST TRIGGER
+        toast.success('Profile updated successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "colored",
+        });
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;

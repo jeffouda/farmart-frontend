@@ -2,29 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser, updateProfile } from '../../features/auth/authSlice';
+import UserAvatarHandler from '../common/UserAvatarHandler';
 import { ShoppingCart, Package, Heart, Settings, LogOut, User, Menu, X, Image as ImageIcon } from 'lucide-react';
-
-// Simple avatar component
-const UserAvatar = ({ size = "h-10 w-10" }) => {
-  const { user } = useSelector((state) => state.auth);
-  const profileImage = user?.profile_image_url || user?.profile?.profile_image_url;
-  
-  if (profileImage) {
-    return (
-      <img 
-        src={profileImage} 
-        alt="Profile" 
-        className={`${size} rounded-full object-cover border-2 border-green-500`}
-      />
-    );
-  }
-  
-  return (
-    <div className={`${size} rounded-full bg-green-100 flex items-center justify-center border-2 border-green-500`}>
-      <User className="w-5 h-5 text-green-600" />
-    </div>
-  );
-};
 
 const Navbar = () => {
   const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -34,8 +13,12 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     navigate('/login');
     setIsDropdownOpen(false);
   };
@@ -87,7 +70,7 @@ const Navbar = () => {
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className="flex items-center gap-1 cursor-pointer group"
                   >
-                    <UserAvatar size="h-9 w-9" />
+                    <UserAvatarHandler size="h-9 w-9" />
                     <svg 
                       className={`w-4 h-4 text-gray-500 group-hover:text-green-600 transition-colors ${isDropdownOpen ? 'rotate-180' : ''}`} 
                       fill="none" 

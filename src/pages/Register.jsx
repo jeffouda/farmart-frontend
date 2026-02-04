@@ -3,14 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { register } from '../features/auth/authSlice';
 
-// Phone number validation regex for Kenyan format
-const KENYAN_PHONE_REGEX = /^(?:254|\+254|0)?(7(?:(?:[129][0-9])|(?:0[0-8])|(?:4[0-1]))[0-9]{6})$/;
+// Phone number validation regex - more lenient for various Kenyan formats
+const KENYAN_PHONE_REGEX = /^(?:\+?254|0)?[71][0-9]{8}$/;
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Username validation - alphanumeric only (no special symbols)
-const USERNAME_REGEX = /^[a-zA-Z0-9]+$/;
+// Name validation - allow letters, spaces, hyphens, and apostrophes
+const NAME_REGEX = /^[a-zA-Z][a-zA-Z\s\-']*$/;
 
 // Password validation utility (matches backend requirements)
 const validatePassword = (password) => {
@@ -35,20 +35,24 @@ const validatePassword = (password) => {
   return null;
 };
 
-// Phone validation utility
+// Phone validation utility - more lenient
 const validatePhone = (phone) => {
   if (!phone) return 'Phone number is required';
-  if (!KENYAN_PHONE_REGEX.test(phone)) {
+  // Remove any spaces or dashes
+  const cleanPhone = phone.replace(/[\s-]/g, '');
+  // Accept formats: 07XX XXX XXXX, 254XXXXXXXXX, +254XXXXXXXXX
+  if (!KENYAN_PHONE_REGEX.test(cleanPhone) && !/^254[0-9]{9}$/.test(cleanPhone)) {
     return 'Please enter a valid Kenyan phone number (e.g., 07XXXXXXXX)';
   }
   return null;
 };
 
-// Username validation utility
-const validateUsername = (value, fieldName) => {
-  if (!value) return `${fieldName} is required`;
-  if (!USERNAME_REGEX.test(value)) {
-    return `${fieldName} must be alphanumeric (letters and numbers only)`;
+// Name validation utility
+const validateName = (value, fieldName) => {
+  if (!value.trim()) return `${fieldName} is required`;
+  if (value.trim().length < 2) return `${fieldName} must be at least 2 characters`;
+  if (!NAME_REGEX.test(value.trim())) {
+    return `${fieldName} can only contain letters, spaces, hyphens, and apostrophes`;
   }
   return null;
 };
@@ -78,7 +82,7 @@ const Register = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { error: reduxError } = useAppSelector((state) => state.auth);
+  const { error: reduxError, loading } = useAppSelector((state) => state.auth);
 
   // Phone number masking - only allow digits 0-9 and +
   const handlePhoneChange = (e) => {
@@ -90,13 +94,17 @@ const Register = () => {
     setLocalError('');
   };
 
-  // Username field masking - only allow alphanumeric characters
-  const handleUsernameChange = (e) => {
+  // Name field handler - allow letters, spaces, hyphens
+  const handleNameChange = (e) => {
     const newValue = e.target.value;
-    // Filter: only allow alphanumeric characters (no special symbols)
-    if (!/^[a-zA-Z0-9]*$/.test(newValue)) return;
+    // Only allow letters, spaces, hyphens, and apostrophes
+    if (!/^[a-zA-Z\s\-']*$/.test(newValue)) return;
     setFormData({ ...formData, [e.target.name]: newValue });
     setLocalError('');
+    // Clear field error when user types
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({ ...fieldErrors, [e.target.name]: null });
+    }
   };
 
   // Generic change handler for other fields
@@ -106,18 +114,22 @@ const Register = () => {
     if (e.target.name === 'password') {
       setPasswordError('');
     }
+    // Clear field error when user types
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors({ ...fieldErrors, [e.target.name]: null });
+    }
   };
 
   // Validate all form fields
   const validateForm = () => {
     const errors = {};
 
-    // Validate firstName (alphanumeric only)
-    const firstNameError = validateUsername(formData.firstName, 'First name');
+    // Validate firstName
+    const firstNameError = validateName(formData.firstName, 'First name');
     if (firstNameError) errors.firstName = firstNameError;
 
-    // Validate lastName (alphanumeric only)
-    const lastNameError = validateUsername(formData.lastName, 'Last name');
+    // Validate lastName
+    const lastNameError = validateName(formData.lastName, 'Last name');
     if (lastNameError) errors.lastName = lastNameError;
 
     // Validate email
@@ -150,10 +162,10 @@ const Register = () => {
   // Check if form is valid for button disable state
   const isFormValid = () => {
     return (
-      USERNAME_REGEX.test(formData.firstName) &&
-      USERNAME_REGEX.test(formData.lastName) &&
+      formData.firstName.trim().length >= 2 &&
+      formData.lastName.trim().length >= 2 &&
       EMAIL_REGEX.test(formData.email) &&
-      KENYAN_PHONE_REGEX.test(formData.phone) &&
+      formData.phone.replace(/[\s-]/g, '').length >= 10 &&
       formData.password.length >= 8 &&
       formData.password === formData.confirmPassword &&
       formData.role
@@ -216,8 +228,8 @@ const Register = () => {
                 type="text"
                 name="firstName"
                 value={formData.firstName}
-                onChange={handleUsernameChange}
-                placeholder=" alphanumeric only"
+                onChange={handleNameChange}
+                placeholder="e.g., John"
                 className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.firstName ? 'border-red-500' : ''}`}
                 required
               />
@@ -231,8 +243,8 @@ const Register = () => {
                 type="text"
                 name="lastName"
                 value={formData.lastName}
-                onChange={handleUsernameChange}
-                placeholder=" alphanumeric only"
+                onChange={handleNameChange}
+                placeholder="e.g., Doe"
                 className={`mt-1 w-full px-4 py-2 border rounded-lg ${fieldErrors.lastName ? 'border-red-500' : ''}`}
                 required
               />
@@ -325,14 +337,14 @@ const Register = () => {
 
           <button
             type="submit"
-            disabled={!isFormValid()}
+            disabled={!isFormValid() || loading}
             className={`w-full py-2 px-4 rounded-lg font-semibold transition ${
-              isFormValid()
+              isFormValid() && !loading
                 ? 'bg-green-600 text-white hover:bg-green-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            Create Account
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
