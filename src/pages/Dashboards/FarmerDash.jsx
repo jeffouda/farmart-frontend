@@ -1,39 +1,36 @@
-import { useState } from 'react';
-import Navbar from '../../components/layout/Navbar';
+import { useEffect, useState } from "react";
+import api from "../../services/api";
+import LivestockCard from "../../components/cards/LivestockCard";
 
-const FarmerDash = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+export default function FarmerDash() {
+  const [animals, setAnimals] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+
+  useEffect(() => {
+    api.get("/farmer/livestock").then(res => setAnimals(res.data));
+    api.get("/farmer/analytics").then(res => setAnalytics(res.data));
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Farmer Dashboard</h1>
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="border-b px-6 py-4">
-            <nav className="flex gap-6">
-              {['overview', 'inventory', 'orders', 'analytics', 'payouts'].map((tab) => (
-                <button key={tab} onClick={() => setActiveTab(tab)} className={`capitalize ${activeTab === tab ? 'text-primary-600 font-semibold' : 'text-gray-500'}`}>
-                  {tab}
-                </button>
-              ))}
-            </nav>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Farmer Dashboard</h1>
+
+      {analytics && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-green-100 p-4 rounded">
+            Total Animals: {analytics.total_animals}
           </div>
-          <div className="p-6">
-            {activeTab === 'overview' && (
-              <div className="grid md:grid-cols-4 gap-6">
-                <div className="bg-primary-50 p-6 rounded-lg"><p className="text-sm text-gray-600">Total Listings</p><p className="text-3xl font-bold text-primary-600">12</p></div>
-                <div className="bg-green-50 p-6 rounded-lg"><p className="text-sm text-gray-600">Active Sales</p><p className="text-3xl font-bold text-green-600">5</p></div>
-                <div className="bg-secondary-50 p-6 rounded-lg"><p className="text-sm text-gray-600">Total Revenue</p><p className="text-3xl font-bold text-secondary-600">KES 450,000</p></div>
-                <div className="bg-blue-50 p-6 rounded-lg"><p className="text-sm text-gray-600">Orders</p><p className="text-3xl font-bold text-blue-600">8</p></div>
-              </div>
-            )}
-            {activeTab === 'inventory' && <p>Your livestock listings will appear here.</p>}
+          <div className="bg-blue-100 p-4 rounded">
+            Inventory Value: KES {analytics.total_value.toLocaleString()}
           </div>
         </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {animals.map(animal => (
+          <LivestockCard key={animal.id} animal={animal} />
+        ))}
       </div>
     </div>
   );
-};
-
-export default FarmerDash;
+}
