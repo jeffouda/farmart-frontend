@@ -30,23 +30,26 @@ function App() {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/browse" element={<BrowseAnimals />} />
-      <Route path="/animal/:id" element={<AnimalDetails />} />
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
+    <>
+    <BuyerDash />
+    </>
+    // <Routes>
+    //   <Route path="/" element={<Home />} />
+    //   <Route path="/browse" element={<BrowseAnimals />} />
+    //   <Route path="/animal/:id" element={<AnimalDetails />} />
+    //   <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+    //   <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
 
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          {user?.role === 'farmer' ? <FarmerDash /> : user?.role === 'admin' ? <AdminDash /> : <BuyerDash />}
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/verification" element={<ProtectedRoute><Verification /></ProtectedRoute>} />
+    //   <Route path="/dashboard" element={
+    //     <ProtectedRoute>
+    //       {user?.role === 'farmer' ? <FarmerDash /> : user?.role === 'admin' ? <AdminDash /> : <BuyerDash />}
+    //     </ProtectedRoute>
+    //   } />
+    //   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+    //   <Route path="/verification" element={<ProtectedRoute><Verification /></ProtectedRoute>} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    //   <Route path="*" element={<Navigate to="/" replace />} />
+    // </Routes>
   );
 }
 
