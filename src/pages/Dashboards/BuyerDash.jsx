@@ -1,175 +1,238 @@
-import React, { useState, useEffect } from "react";
-import { ShoppingCart, Trash2 } from "lucide-react";
-// Import your central API configuration
-import api from "../../services/api";
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { getProfile } from '../../features/auth/authSlice';
+import { getOrders } from '../../features/checkout/cartSlice';
+import { Package, ShoppingCart, Heart, TrendingUp, ArrowRight, Search } from 'lucide-react';
+import UserAvatarHandler from '../../components/common/UserAvatarHandler';
 
 const BuyerDash = () => {
-  const [wishlist, setWishlist] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { orders } = useSelector((state) => state.cart);
+  const dispatch = useDispatch();
 
-  // 1. Fetch Data on Mount
   useEffect(() => {
-    const fetchWishlist = async () => {
-      try {
-        setLoading(true);
-        // Axios uses the baseURL from your api.js
-        const response = await api.get("/wishlist");
-
-        // Ensure we set an array to avoid .map() errors
-        const data = response.data;
-        setWishlist(Array.isArray(data) ? data : data.items || []);
-      } catch (err) {
-        console.error("API Error:", err);
-        // Fallback mock data for development
-        setWishlist([
-          {
-            id: 1,
-            breed: "Boer",
-            category: "Goat",
-            location: "Nairobi, Kenya",
-            price: 15000,
-            dateAdded: "1/30/2026",
-            image:
-              "https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&w=400",
-          },
-          {
-            id: 2,
-            breed: "Kuroiler",
-            category: "Poultry",
-            location: "Kisumu, Kenya",
-            price: 800,
-            dateAdded: "1/30/2026",
-            image:
-              "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=400",
-          },
-          {
-            id: 3,
-            breed: "Large White",
-            category: "Pig",
-            location: "Thika, Kenya",
-            price: 25000,
-            dateAdded: "1/30/2026",
-            image:
-              "https://images.unsplash.com/photo-1544225580-3ef372242826?auto=format&fit=crop&w=400",
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWishlist();
-  }, []);
-
-  // 2. Action: Add to Cart
-  const handleAddToCart = async (itemId) => {
-    try {
-      await api.post("/cart", { id: itemId });
-      alert("Added to cart!");
-    } catch (err) {
-      console.error("Cart Error:", err);
+    if (isAuthenticated) {
+      dispatch(getProfile());
+      dispatch(getOrders());
     }
-  };
+  }, [dispatch, isAuthenticated]);
 
-  // 3. Action: Remove from Wishlist
-  const handleRemoveItem = async (itemId) => {
-    try {
-      await api.delete(`/wishlist/${itemId}`);
-      // Optimistic UI update: remove from local state immediately
-      setWishlist((prev) => prev.filter((item) => item.id !== itemId));
-    } catch (err) {
-      console.error("Delete Error:", err);
-    }
-  };
+  // Safe data extraction with fallbacks
+  const recentOrders = orders?.slice(0, 5) || [];
+  const totalOrders = orders?.length || 0;
+  const pendingOrders = orders?.filter(o => o?.status === 'pending').length || 0;
+
+  const stats = [
+    { 
+      label: 'Total Orders', 
+      value: totalOrders, 
+      icon: Package, 
+      color: 'bg-blue-500',
+      link: '/dashboard/orders'
+    },
+    { 
+      label: 'Pending', 
+      value: pendingOrders, 
+      icon: ShoppingCart, 
+      color: 'bg-yellow-500',
+      link: '/dashboard/orders?status=pending'
+    },
+    { 
+      label: 'Saved Items', 
+      value: '0', 
+      icon: Heart, 
+      color: 'bg-red-500',
+      link: '/dashboard/favorites'
+    },
+    { 
+      label: 'Total Spent', 
+      value: 'KES 0', 
+      icon: TrendingUp, 
+      color: 'bg-green-500',
+      link: '/dashboard/orders'
+    },
+  ];
 
   return (
-    <div className="bg-slate-50 text-zinc-900 min-h-screen">
-      <main className="max-w-6xl mx-auto p-8">
-        {/* Header Section */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-800">
-            My Wishlist
-          </h1>
-          <span className="text-zinc-500 font-medium">
-            {wishlist.length} items
-          </span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center gap-4">
+            <UserAvatarHandler size="h-20 w-20" />
+            <div>
+              <h1 className="text-2xl font-bold">
+                Welcome back, {user?.first_name || 'Farmer'}! 👋
+              </h1>
+              <p className="text-green-100">
+                Manage your livestock marketplace account
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="max-w-7xl mx-auto px-4 -mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {stats.map((stat) => (
+            <Link
+              key={stat.label}
+              to={stat.link}
+              className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow"
+            >
+              <div className={`${stat.color} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
+                <stat.icon className="w-5 h-5 text-white" />
+              </div>
+              <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
+              <p className="text-sm text-gray-500">{stat.label}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Recent Orders */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-800">Recent Orders</h2>
+              <Link to="/dashboard/orders" className="text-green-600 hover:text-green-700 text-sm font-medium">
+                View All
+              </Link>
+            </div>
+            
+            {recentOrders.length > 0 ? (
+              <div className="space-y-3">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-green-100 p-2 rounded-lg">
+                        <Package className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{order.livestock?.name || 'Livestock'}</p>
+                        <p className="text-sm text-gray-500">{order.created_at}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-800">KES {order.total_amount?.toLocaleString()}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 mb-4">No orders yet</p>
+                <Link 
+                  to="/browse" 
+                  className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Search className="w-4 h-4" />
+                  Browse Animals
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+            <div className="space-y-3">
+              <Link 
+                to="/browse"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-500 p-2 rounded-lg">
+                    <Search className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">Browse Marketplace</p>
+                    <p className="text-sm text-gray-500">Find your next livestock</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-green-600" />
+              </Link>
+
+              <Link 
+                to="/dashboard/orders"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-500 p-2 rounded-lg">
+                    <Package className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">View Orders</p>
+                    <p className="text-sm text-gray-500">Track your purchases</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-blue-600" />
+              </Link>
+
+              <Link 
+                to="/dashboard/favorites"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-500 p-2 rounded-lg">
+                    <Heart className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">Saved Items</p>
+                    <p className="text-sm text-gray-500">Your wishlist</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-red-600" />
+              </Link>
+
+              <Link 
+                to="/settings"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-gray-100 hover:to-gray-200 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-gray-500 p-2 rounded-lg">
+                    <Package className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-800">Account Settings</p>
+                    <p className="text-sm text-gray-500">Manage your profile</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-600" />
+              </Link>
+            </div>
+          </div>
         </div>
 
-        {/* Loading State */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-zinc-500">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-4"></div>
-            <p className="font-medium">Fetching your farm items...</p>
-          </div>
-        ) : (
-          /* Wishlist Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {wishlist.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white border border-zinc-200 rounded-xl overflow-hidden group hover:shadow-lg transition-all duration-300">
-                {/* Image Container */}
-                <div className="relative h-52 overflow-hidden bg-zinc-100">
-                  <img
-                    src={item.image}
-                    alt={item.breed}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                  />
-                  <button
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="absolute top-3 right-3 p-2 bg-white/90 text-rose-500 rounded-md hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                    title="Remove from wishlist">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Details Container */}
-                <div className="p-5">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-zinc-800">
-                      {item.breed}
-                    </h3>
-                    <p className="text-zinc-500 text-sm font-medium">
-                      {item.category}
-                    </p>
-                    <p className="text-zinc-400 text-xs mt-1">
-                      📍 {item.location}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-end mb-5">
-                    <div>
-                      <p className="text-[10px] text-zinc-400 uppercase tracking-widest mb-1">
-                        Price
-                      </p>
-                      <p className="text-green-600 font-bold text-xl">
-                        KES {item.price.toLocaleString()}
-                      </p>
-                    </div>
-                    <p className="text-[10px] text-zinc-400 italic">
-                      Added {item.dateAdded}
-                    </p>
-                  </div>
-
-                  {/* Add to Cart Button */}
-                  <button
-                    onClick={() => handleAddToCart(item.id)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm shadow-green-200">
-                    <ShoppingCart className="w-4 h-4" /> Add to Cart
-                  </button>
+        {/* Activity Feed */}
+        <div className="mt-6 bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h2>
+          <div className="space-y-4">
+            {[
+              { icon: '🛒', text: 'Browse livestock available for sale', time: '2 hours ago' },
+              { icon: '📦', text: 'Check your recent orders', time: '1 day ago' },
+              { icon: '💚', text: 'Save items to your wishlist', time: '2 days ago' },
+            ].map((activity, index) => (
+              <div key={index} className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0">
+                <span className="text-xl">{activity.icon}</span>
+                <div>
+                  <p className="text-gray-700">{activity.text}</p>
+                  <p className="text-xs text-gray-400">{activity.time}</p>
                 </div>
               </div>
             ))}
           </div>
-        )}
-
-        {/* Empty State Fallback */}
-        {!loading && wishlist.length === 0 && (
-          <div className="text-center py-24 bg-white border border-dashed border-zinc-300 rounded-2xl">
-            <p className="text-zinc-500">Your wishlist is currently empty.</p>
-          </div>
-        )}
-      </main>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { toast } from 'react-toastify';
 
 // Password validation utility
 const validatePassword = (password) => {
@@ -83,6 +84,20 @@ const extractErrorMessage = (error) => {
   return data.error || data.message || data.detail || 'An error occurred. Please try again.';
 };
 
+// Helper to load user from localStorage
+const loadUserFromStorage = () => {
+  try {
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.user || null;
+    }
+  } catch (e) {
+    console.error('Error loading user from localStorage:', e);
+  }
+  return null;
+};
+
 // Async thunks
 export const login = createAsyncThunk('auth/login', async (credentials, { rejectWithValue }) => {
   try {
@@ -94,6 +109,12 @@ export const login = createAsyncThunk('auth/login', async (credentials, { reject
     if (!user) {
       throw new Error('Invalid response from server');
     }
+    
+    // Store user in localStorage for persistence
+    localStorage.setItem('user', JSON.stringify({
+      user,
+      isAuthenticated: true,
+    }));
     
     return { user };
   } catch (error) {
@@ -113,17 +134,75 @@ export const register = createAsyncThunk('auth/register', async (userData, { rej
 export const getProfile = createAsyncThunk('auth/profile', async (_, { rejectWithValue }) => {
   try {
     const response = await api.get('/auth/me');
+    const user = response?.user || response;
+    
+    // Store in localStorage
+    localStorage.setItem('user', JSON.stringify({
+      user,
+      isAuthenticated: true,
+    }));
+    
     return response;
   } catch (error) {
     return rejectWithValue(extractErrorMessage(error));
   }
 });
 
-// Initial state - cookie-based auth (no localStorage tokens)
+export const updateProfile = createAsyncThunk('auth/updateProfile', async (profileData, { rejectWithValue }) => {
+  try {
+    // Handle file upload if image is provided
+    if (profileData.image) {
+      const formData = new FormData();
+      formData.append('image', profileData.image);
+      
+      // Append other fields
+      Object.keys(profileData).forEach(key => {
+        if (key !== 'image' && profileData[key] !== undefined) {
+          formData.append(key, profileData[key]);
+        }
+      });
+      
+      const response = await api.formPatch('/auth/profile', formData);
+      
+      // Store updated user in localStorage
+      localStorage.setItem('user', JSON.stringify({
+        user: response.user,
+        isAuthenticated: true,
+      }));
+      
+      return response;
+    } else {
+      // Regular JSON update (including profile_image_url: null for removal)
+      const response = await api.patch('/auth/profile', profileData);
+      
+      // Store updated user in localStorage
+      localStorage.setItem('user', JSON.stringify({
+        user: response.user,
+        isAuthenticated: true,
+      }));
+      
+      return response;
+    }
+  } catch (error) {
+    return rejectWithValue(extractErrorMessage(error));
+  }
+});
+
+export const logoutUser = createAsyncThunk('auth/logoutUser', async (_, { rejectWithValue }) => {
+  try {
+    await api.post('/auth/logout');
+    return true;
+  } catch (error) {
+    // Even if logout fails on server, clear local state
+    return true;
+  }
+});
+
+// Initial state - cookie-based auth with localStorage persistence
 const initialState = {
-  user: null,
-  isAuthenticated: false,
-  token: null,  // No longer using localStorage for tokens
+  user: loadUserFromStorage() || null,
+  isAuthenticated: !!localStorage.getItem('user'),
+  token: null,
   loading: false,
   error: null,
 };
@@ -137,8 +216,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.token = null;
       state.error = null;
-      // Note: JWT cookies are cleared by the server via unset_jwt_cookies()
-      // No localStorage cleanup needed since we're using HttpOnly cookies
+      localStorage.removeItem('user');
     },
     clearError: (state) => {
       state.error = null;
@@ -155,7 +233,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload?.user || null;
-        // Token is now stored in HttpOnly cookies, not in state
         state.token = null;
       })
       .addCase(login.rejected, (state, action) => {
@@ -178,6 +255,53 @@ const authSlice = createSlice({
       .addCase(getProfile.fulfilled, (state, action) => {
         state.user = action.payload?.user || action.payload || null;
         state.isAuthenticated = true;
+      })
+      // Update Profile
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        if (state.user) {
+          // Update with full user object if provided
+          if (action.payload?.user) {
+            state.user = {
+              ...state.user,
+              ...action.payload.user,
+            };
+          }
+          // Handle profile_image_url (including null for removing photo)
+          if (action.payload?.profile_image_url !== undefined) {
+            state.user.profile_image_url = action.payload.profile_image_url;
+            state.user.profile = {
+              ...state.user.profile,
+              profile_image_url: action.payload.profile_image_url
+            };
+          }
+        }
+        // THE TOAST TRIGGER
+        toast.success('Profile updated successfully!', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error(action.payload || 'Failed to update profile', {
+          position: "top-right",
+          autoClose: 3000,
+          theme: "colored",
+        });
+      })
+      // Logout User
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+        state.token = null;
+        localStorage.removeItem('user');
       });
   },
 });

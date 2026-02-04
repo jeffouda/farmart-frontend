@@ -83,6 +83,31 @@ class ApiService {
   delete(endpoint) {
     return this.request(endpoint, { method: 'DELETE' });
   }
+
+  // Special method for multipart form data (file uploads)
+  formPatch(endpoint, formData) {
+    const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      credentials: 'include',
+      method: 'PATCH',
+      body: formData,
+      // Don't set Content-Type for FormData - browser sets it with boundary
+    };
+    
+    return fetch(url, config)
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(errorData => {
+            throw new Error(extractApiErrorMessage(response, errorData));
+          });
+        }
+        return response.json();
+      })
+      .catch(error => {
+        console.error('API Error:', error);
+        throw error;
+      });
+  }
 }
 
 const api = new ApiService();
