@@ -1,19 +1,12 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  MapPin,
-  Star,
-  Heart,
-  Sliders,
-  Check,
-  Loader2,
-  X,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom"; // Import for navigation
+import { Search, MapPin, Star, Heart, Sliders, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../../services/api";
 
 const BuyerDash = () => {
+  const navigate = useNavigate();
   const [wishlist, setWishlist] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +28,7 @@ const BuyerDash = () => {
         setWishlist(data);
         setFilteredItems(data);
       } catch (err) {
+        // Fallback Mock Data matching your marketplace image
         const mockData = [
           {
             id: 1,
@@ -81,36 +75,6 @@ const BuyerDash = () => {
             image:
               "https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?auto=format&fit=crop&w=400",
           },
-          {
-            id: 4,
-            breed: "Galla Buck - Breeding",
-            sub: "Galla Goat",
-            type: "Goat",
-            price: 35000,
-            age: "3yrs",
-            weight: "60kg",
-            seller: "Sarah Wanjiku",
-            location: "Kiambu, Kenya",
-            rating: 4.9,
-            verified: true,
-            image:
-              "https://images.unsplash.com/photo-1516391404164-323e03004396?auto=format&fit=crop&w=400",
-          },
-          {
-            id: 5,
-            breed: "Dorper Ram - Young",
-            sub: "Dorper sheep",
-            type: "Sheep",
-            price: 32000,
-            age: "1.5 yrs",
-            weight: "65kg",
-            seller: "Peter Mwangi",
-            location: "Narok, Kenya",
-            rating: 4.7,
-            verified: true,
-            image:
-              "https://images.unsplash.com/photo-1484557985045-edf25e08da73?auto=format&fit=crop&w=400",
-          },
         ];
         setWishlist(mockData);
         setFilteredItems(mockData);
@@ -121,10 +85,9 @@ const BuyerDash = () => {
     fetchWishlist();
   }, []);
 
-  // Combined Filter Logic (Search + Sidebar)
+  // Filter & Search Logic
   useEffect(() => {
     let result = wishlist;
-
     if (searchQuery) {
       result = result.filter(
         (item) =>
@@ -132,21 +95,13 @@ const BuyerDash = () => {
           item.sub.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
-
-    if (selectedTypes.length > 0) {
+    if (selectedTypes.length > 0)
       result = result.filter((item) => selectedTypes.includes(item.type));
-    }
-
-    if (selectedLocations.length > 0) {
+    if (selectedLocations.length > 0)
       result = result.filter((item) =>
         selectedLocations.includes(item.location),
       );
-    }
-
-    if (healthOnly) {
-      result = result.filter((item) => item.verified === true);
-    }
-
+    if (healthOnly) result = result.filter((item) => item.verified === true);
     setFilteredItems(result);
   }, [searchQuery, selectedTypes, selectedLocations, healthOnly, wishlist]);
 
@@ -220,7 +175,7 @@ const BuyerDash = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content Area */}
       <main className="flex-1 p-6 lg:p-10">
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
@@ -248,7 +203,7 @@ const BuyerDash = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                 <X size={16} />
               </button>
             )}
@@ -260,88 +215,72 @@ const BuyerDash = () => {
             <Loader2 className="animate-spin text-orange-500" />
           </div>
         ) : (
-          <>
-            {filteredItems.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <AnimatePresence mode="popLayout">
-                  {filteredItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-                      <div className="relative h-56">
-                        <img
-                          src={item.image}
-                          alt={item.breed}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-3 left-3 flex gap-2">
-                          <span className="bg-white/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded border border-slate-200 uppercase">
-                            {item.type}
-                          </span>
-                        </div>
-                      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <AnimatePresence mode="popLayout">
+              {filteredItems.map((item) => (
+                <motion.div
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                  <div className="relative h-56">
+                    <img
+                      src={item.image}
+                      alt={item.breed}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded border border-slate-200 uppercase">
+                      {item.type}
+                    </div>
+                  </div>
 
-                      <div className="p-4 flex-1">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-bold text-slate-900 leading-tight">
-                            {item.breed}
-                          </h3>
-                          <p className="text-orange-500 font-bold whitespace-nowrap ml-2">
-                            KSh {item.price.toLocaleString()}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-bold text-slate-900 leading-tight">
+                        {item.breed}
+                      </h3>
+                      <p className="text-orange-500 font-bold whitespace-nowrap ml-2">
+                        KSh {item.price.toLocaleString()}
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2">{item.sub}</p>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-500 my-3">
+                      <span>{item.age}</span> • <span>{item.weight}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                          {item.seller.charAt(0)}
+                        </div>
+                        <div className="text-[10px]">
+                          <p className="font-bold text-slate-800">
+                            {item.seller}
+                          </p>
+                          <p className="flex items-center gap-0.5 text-slate-400">
+                            <MapPin size={8} /> {item.location}
                           </p>
                         </div>
-                        <p className="text-xs text-slate-400 mb-2">
-                          {item.sub}
-                        </p>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 my-3">
-                          <span>{item.age}</span>
-                          <span className="text-slate-300">•</span>
-                          <span>{item.weight}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50 mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
-                              {item.seller.charAt(0)}
-                            </div>
-                            <div className="text-[10px]">
-                              <p className="font-bold text-slate-800">
-                                {item.seller}
-                              </p>
-                              <p className="flex items-center gap-0.5 text-slate-400">
-                                <MapPin size={8} /> {item.location}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 text-orange-500 font-bold text-xs">
-                            <Star size={12} fill="currentColor" /> {item.rating}
-                          </div>
-                        </div>
-
-                        <button className="w-full bg-[#ffa502] hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-sm active:scale-[0.98]">
-                          View Details
-                        </button>
                       </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            ) : (
-              <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                <Search size={48} className="mx-auto text-slate-200 mb-4" />
-                <h3 className="text-lg font-bold text-slate-800">
-                  No animals found
-                </h3>
-                <p className="text-slate-500">
-                  Try adjusting your filters or search terms.
-                </p>
-              </div>
-            )}
-          </>
+                      <div className="flex items-center gap-1 text-orange-500 font-bold text-xs">
+                        <Star size={12} fill="currentColor" /> {item.rating}
+                      </div>
+                    </div>
+
+                    {/* Navigation Button */}
+                    <button
+                      onClick={() => navigate(`/animal/${item.id}`)}
+                      className="w-full bg-[#ffa502] hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-sm active:scale-[0.98]">
+                      View Details
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         )}
       </main>
     </div>
