@@ -1,238 +1,288 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { getProfile } from '../../features/auth/authSlice';
-import { getOrders } from '../../features/checkout/cartSlice';
-import { Package, ShoppingCart, Heart, TrendingUp, ArrowRight, Search } from 'lucide-react';
-import UserAvatarHandler from '../../components/common/UserAvatarHandler';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Import for navigation
+import { Search, MapPin, Star, Heart, Sliders, Loader2, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
+import api from "../../services/api";
 
 const BuyerDash = () => {
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
-  const { orders } = useSelector((state) => state.cart);
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [wishlist, setWishlist] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [healthOnly, setHealthOnly] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(getProfile());
-      dispatch(getOrders());
+    const fetchWishlist = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get("/wishlist");
+        const data = Array.isArray(response.data)
+          ? response.data
+          : response.data.items || [];
+        setWishlist(data);
+        setFilteredItems(data);
+      } catch (err) {
+        // Fallback Mock Data matching your marketplace image
+        const mockData = [
+          {
+            id: 1,
+            breed: "Boran Bull - Premium",
+            sub: "Boran Bull",
+            type: "Cow",
+            price: 185000,
+            age: "3 yrs",
+            weight: "450 kg",
+            seller: "James Kimani",
+            location: "Nakuru, Kenya",
+            rating: 4.8,
+            verified: true,
+            image:
+              "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&w=400",
+          },
+          {
+            id: 2,
+            breed: "Boer Goat - Doe",
+            sub: "Boer Goat",
+            type: "Goat",
+            price: 28000,
+            age: "2 yrs",
+            weight: "55kg",
+            seller: "Sarah Wanjiku",
+            location: "Kiambu, Kenya",
+            rating: 4.9,
+            verified: true,
+            image:
+              "https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&w=400",
+          },
+          {
+            id: 3,
+            breed: "Sahiwal Heifer",
+            sub: "Sahiwal",
+            type: "Cow",
+            price: 165000,
+            age: "2.5yrs",
+            weight: "380kg",
+            seller: "James Kimani",
+            location: "Nakuru, Kenya",
+            rating: 4.8,
+            verified: false,
+            image:
+              "https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?auto=format&fit=crop&w=400",
+          },
+        ];
+        setWishlist(mockData);
+        setFilteredItems(mockData);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWishlist();
+  }, []);
+
+  // Filter & Search Logic
+  useEffect(() => {
+    let result = wishlist;
+    if (searchQuery) {
+      result = result.filter(
+        (item) =>
+          item.breed.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.sub.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
     }
-  }, [dispatch, isAuthenticated]);
+    if (selectedTypes.length > 0)
+      result = result.filter((item) => selectedTypes.includes(item.type));
+    if (selectedLocations.length > 0)
+      result = result.filter((item) =>
+        selectedLocations.includes(item.location),
+      );
+    if (healthOnly) result = result.filter((item) => item.verified === true);
+    setFilteredItems(result);
+  }, [searchQuery, selectedTypes, selectedLocations, healthOnly, wishlist]);
 
-  // Safe data extraction with fallbacks
-  const recentOrders = orders?.slice(0, 5) || [];
-  const totalOrders = orders?.length || 0;
-  const pendingOrders = orders?.filter(o => o?.status === 'pending').length || 0;
-
-  const stats = [
-    { 
-      label: 'Total Orders', 
-      value: totalOrders, 
-      icon: Package, 
-      color: 'bg-blue-500',
-      link: '/dashboard/orders'
-    },
-    { 
-      label: 'Pending', 
-      value: pendingOrders, 
-      icon: ShoppingCart, 
-      color: 'bg-yellow-500',
-      link: '/dashboard/orders?status=pending'
-    },
-    { 
-      label: 'Saved Items', 
-      value: '0', 
-      icon: Heart, 
-      color: 'bg-red-500',
-      link: '/dashboard/favorites'
-    },
-    { 
-      label: 'Total Spent', 
-      value: 'KES 0', 
-      icon: TrendingUp, 
-      color: 'bg-green-500',
-      link: '/dashboard/orders'
-    },
-  ];
+  const toggleFilter = (setList, value) => {
+    setList((prev) =>
+      prev.includes(value) ? prev.filter((i) => i !== value) : [...prev, value],
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex items-center gap-4">
-            <UserAvatarHandler size="h-20 w-20" />
-            <div>
-              <h1 className="text-2xl font-bold">
-                Welcome back, {user?.first_name || 'Farmer'}! 👋
-              </h1>
-              <p className="text-green-100">
-                Manage your livestock marketplace account
-              </p>
-            </div>
+    <div className="bg-[#f3f4f6] min-h-screen flex">
+      {/* Sidebar Filters */}
+      <aside className="w-72 bg-[#f9fafb] border-r border-slate-200 p-6 hidden lg:block sticky top-0 h-screen overflow-y-auto">
+        <div className="flex items-center gap-2 mb-8">
+          <Sliders size={20} className="text-slate-600" />
+          <h2 className="text-xl font-bold text-slate-800">Filters</h2>
+        </div>
+
+        <div className="space-y-8">
+          <section>
+            <h3 className="font-bold text-slate-800 mb-4">Animal Types</h3>
+            {["Cow", "Goat", "Sheep"].map((type) => (
+              <label
+                key={type}
+                className="flex items-center gap-3 mb-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 accent-orange-500 rounded border-slate-300"
+                  onChange={() => toggleFilter(setSelectedTypes, type)}
+                />
+                <span className="text-slate-600 group-hover:text-slate-900">
+                  {type}
+                </span>
+              </label>
+            ))}
+          </section>
+
+          <section>
+            <h3 className="font-bold text-slate-800 mb-4">Location</h3>
+            {[
+              "Nakuru, Kenya",
+              "Kiambu, Kenya",
+              "Narok, Kenya",
+              "Eldoret, Kenya",
+            ].map((loc) => (
+              <label
+                key={loc}
+                className="flex items-center gap-3 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 accent-orange-500 rounded border-slate-300"
+                  onChange={() => toggleFilter(setSelectedLocations, loc)}
+                />
+                <span className="text-slate-600">{loc}</span>
+              </label>
+            ))}
+          </section>
+
+          <hr className="border-slate-200" />
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-5 h-5 accent-orange-500 rounded border-slate-300"
+              onChange={(e) => setHealthOnly(e.target.checked)}
+            />
+            <span className="font-bold text-slate-800">
+              Health Verified Only
+            </span>
+          </label>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 p-6 lg:p-10">
+        <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900">
+              Available Livestock
+            </h1>
+            <p className="text-slate-500 font-medium">
+              {filteredItems.length} animals found
+            </p>
           </div>
-        </div>
-      </div>
 
-      {/* Quick Stats */}
-      <div className="max-w-7xl mx-auto px-4 -mt-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((stat) => (
-            <Link
-              key={stat.label}
-              to={stat.link}
-              className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow"
-            >
-              <div className={`${stat.color} w-10 h-10 rounded-lg flex items-center justify-center mb-3`}>
-                <stat.icon className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-2xl font-bold text-gray-800">{stat.value}</p>
-              <p className="text-sm text-gray-500">{stat.label}</p>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Recent Orders */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-800">Recent Orders</h2>
-              <Link to="/dashboard/orders" className="text-green-600 hover:text-green-700 text-sm font-medium">
-                View All
-              </Link>
-            </div>
-            
-            {recentOrders.length > 0 ? (
-              <div className="space-y-3">
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-green-100 p-2 rounded-lg">
-                        <Package className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800">{order.livestock?.name || 'Livestock'}</p>
-                        <p className="text-sm text-gray-500">{order.created_at}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-800">KES {order.total_amount?.toLocaleString()}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
-                      }`}>
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 mb-4">No orders yet</p>
-                <Link 
-                  to="/browse" 
-                  className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Search className="w-4 h-4" />
-                  Browse Animals
-                </Link>
-              </div>
+          {/* Search Bar */}
+          <div className="relative w-full md:w-96">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+            />
+            <input
+              type="text"
+              placeholder="Search breed or category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <X size={16} />
+              </button>
             )}
           </div>
+        </header>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <Link 
-                to="/browse"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-500 p-2 rounded-lg">
-                    <Search className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800">Browse Marketplace</p>
-                    <p className="text-sm text-gray-500">Find your next livestock</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-green-600" />
-              </Link>
-
-              <Link 
-                to="/dashboard/orders"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-500 p-2 rounded-lg">
-                    <Package className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800">View Orders</p>
-                    <p className="text-sm text-gray-500">Track your purchases</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-blue-600" />
-              </Link>
-
-              <Link 
-                to="/dashboard/favorites"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-red-50 to-red-100 rounded-lg hover:from-red-100 hover:to-red-200 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-red-500 p-2 rounded-lg">
-                    <Heart className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800">Saved Items</p>
-                    <p className="text-sm text-gray-500">Your wishlist</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-red-600" />
-              </Link>
-
-              <Link 
-                to="/settings"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg hover:from-gray-100 hover:to-gray-200 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-gray-500 p-2 rounded-lg">
-                    <Package className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-800">Account Settings</p>
-                    <p className="text-sm text-gray-500">Manage your profile</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-gray-600" />
-              </Link>
-            </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-orange-500" />
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <AnimatePresence mode="popLayout">
+              {filteredItems.map((item) => (
+                <motion.div
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                  <div className="relative h-56">
+                    <img
+                      src={item.image}
+                      alt={item.breed}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded border border-slate-200 uppercase">
+                      {item.type}
+                    </div>
+                  </div>
 
-        {/* Activity Feed */}
-        <div className="mt-6 bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h2>
-          <div className="space-y-4">
-            {[
-              { icon: '🛒', text: 'Browse livestock available for sale', time: '2 hours ago' },
-              { icon: '📦', text: 'Check your recent orders', time: '1 day ago' },
-              { icon: '💚', text: 'Save items to your wishlist', time: '2 days ago' },
-            ].map((activity, index) => (
-              <div key={index} className="flex items-start gap-3 pb-3 border-b border-gray-100 last:border-0">
-                <span className="text-xl">{activity.icon}</span>
-                <div>
-                  <p className="text-gray-700">{activity.text}</p>
-                  <p className="text-xs text-gray-400">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-bold text-slate-900 leading-tight">
+                        {item.breed}
+                      </h3>
+                      <p className="text-orange-500 font-bold whitespace-nowrap ml-2">
+                        KSh {item.price.toLocaleString()}
+                      </p>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2">{item.sub}</p>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-500 my-3">
+                      <span>{item.age}</span> • <span>{item.weight}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                          {item.seller.charAt(0)}
+                        </div>
+                        <div className="text-[10px]">
+                          <p className="font-bold text-slate-800">
+                            {item.seller}
+                          </p>
+                          <p className="flex items-center gap-0.5 text-slate-400">
+                            <MapPin size={8} /> {item.location}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-orange-500 font-bold text-xs">
+                        <Star size={12} fill="currentColor" /> {item.rating}
+                      </div>
+                    </div>
+
+                    {/* Navigation Button */}
+                    <button
+                      onClick={() => navigate(`/animal/${item.id}`)}
+                      className="w-full bg-[#ffa502] hover:bg-orange-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-sm active:scale-[0.98]">
+                      View Details
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
-        </div>
-      </div>
+        )}
+      </main>
     </div>
   );
 };
