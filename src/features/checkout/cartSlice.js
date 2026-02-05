@@ -1,4 +1,5 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import api from '../../services/api';
 
 const loadCartFromStorage = () => {
   try {
@@ -13,7 +14,22 @@ const saveCartToStorage = (cart) => {
   localStorage.setItem('cart', JSON.stringify(cart));
 };
 
-const initialState = loadCartFromStorage();
+// Async thunk for fetching orders
+export const getOrders = createAsyncThunk('cart/getOrders', async (_, { rejectWithValue }) => {
+  try {
+    const response = await api.get('/orders/my_orders');
+    return response;
+  } catch (error) {
+    return rejectWithValue(error.message || 'Failed to fetch orders');
+  }
+});
+
+const initialState = {
+  ...loadCartFromStorage(),
+  orders: [],
+  loading: false,
+  error: null,
+};
 
 const cartSlice = createSlice({
   name: 'cart',
@@ -48,6 +64,22 @@ const cartSlice = createSlice({
       state.total = 0;
       saveCartToStorage(state);
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      // getOrders
+      .addCase(getOrders.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getOrders.fulfilled, (state, action) => {
+        state.loading = false;
+        state.orders = action.payload || [];
+      })
+      .addCase(getOrders.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
   },
 });
 
